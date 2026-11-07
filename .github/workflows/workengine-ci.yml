@@ -26,8 +26,12 @@ jobs:
       - name: Parse WorkEngine sources
         run: |
           set -e
-          xcrun swiftc -parse src/ios/Agent/WorkEngine/*.swift
-          xcrun swiftc -parse src/ios/MinisTests/WorkEngine*.swift
+          for f in src/ios/Agent/WorkEngine/*.swift; do
+            xcrun swiftc -parse "$f"
+          done
+          for f in src/ios/MinisTests/WorkEngine*.swift; do
+            if [ -f "$f" ]; then xcrun swiftc -parse "$f"; fi
+          done
 
   build:
     name: Build app (device, unsigned)

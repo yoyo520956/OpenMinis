@@ -114,9 +114,10 @@ extension WorkEngineStore {
         bindText(stmt, 1, step.name)
         bindInt(stmt, 2, step.sortIndex)
         bindTextOpt(stmt, 3, step.currentAction)
-        bindTextOpt(stmt, 4, step.failureReason)
-        bindDouble(stmt, 5, Date().timeIntervalSince1970)
-        bindText(stmt, 6, step.id)
+        bindTextOpt(stmt, 4, step.evidence.map { Self.encodeJSON($0) })
+        bindTextOpt(stmt, 5, step.failureReason)
+        bindDouble(stmt, 6, Date().timeIntervalSince1970)
+        bindText(stmt, 7, step.id)
         guard sqlite3_step(stmt) == SQLITE_DONE else { return false }
         return sqlite3_changes(db) > 0
     }

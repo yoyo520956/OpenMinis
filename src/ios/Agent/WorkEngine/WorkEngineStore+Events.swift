@@ -98,12 +98,8 @@ extension WorkEngineStore {
     }
 
     func listEvents(projectId: String) -> [WorkEvent] {
-        let ids = Set(listTasks(projectId: projectId).flatMap { task in
-            [task.id] + listPhases(taskId: task.id).flatMap { phase in
-                [phase.id] + listSteps(phaseId: phase.id).map(\.id)
-            }
-        })
-        return listEvents().filter { idsForProject($0.targetId, ids: projectTargetIds(projectId)) }
+        let ids = projectTargetIds(projectId)
+        return listEvents().filter { ids.contains($0.targetId) }
     }
 
     func replayEvents(projectId: String) throws -> [String: WorkStatus] {
@@ -132,7 +128,7 @@ extension WorkEngineStore {
         defer { if !committed { sqlite3_exec(db, "ROLLBACK", nil, nil, nil) } }
         for event in events {
             if let status = statuses[event.targetId] {
-                try updateStatusOnly(level: event.level, targetId: event.targetId, status: status)
+                try updateStatus(level: event.level, id: event.targetId, status: status, at: Date())
             }
         }
         committed = sqlite3_exec(db, "COMMIT", nil, nil, nil) == SQLITE_OK
@@ -153,5 +149,99 @@ extension WorkEngineStore {
             return WorkTaskSnapshot(task: task, phases: phases, progress: WorkProgress.of(phases.map(\.status)))
         }
         return WorkProjectSnapshot(project: project, tasks: taskSnapshots, progress: WorkProgress.of(tasks.map(\.status)))
+    }
+
+    func currentStatus(level: WorkLevel, targetId: String) throws -> WorkStatus {
+        switch level {
+        case .task:
+            guard let status = task(id: targetId)?.status else {
+                throw WorkEngineStoreError.targetNotFound(level, targetId)
+            }
+            return status
+        case .phase:
+            guard let status = phase(id: targetId)?.status else {
+                throw WorkEngineStoreError.targetNotFound(level, targetId)
+            }
+            return status
+        case .step:
+            guard let status = step(id: targetId)?.status else {
+                throw WorkEngineStoreError.targetNotFound(level, targetId)
+            }
+            return status
+        case .project:
+            throw WorkEngineStoreError.targetNotFound(level, targetId)
+        }
+    }
+
+    func projectTargetIds(_ projectId: String) -> Set<String> {
+        var ids: Set<String> = []
+        for task in listTasks(projectId: projectId) {
+            ids.insert(task.id)
+            for phase in listPhases(taskId: task.id) {
+                ids.insert(phase.id)
+                ids.formUnion(listSteps(phaseId: phase.id).map(\.id))
+            }
+        }
+        return ids
+    }
+
+    func currentStatuses(projectId: String) throws -> [String: WorkStatus] {
+        var statuses: [String: WorkStatus] = [:]
+        for task in listTasks(projectId: projectId) {
+            statuses[task.id] = task.status
+            for phase in listPhases(taskId: task.id) {
+                statuses[phase.id] = phase.status
+                for step in listSteps(phaseId: phase.id) {
+                    statuses[step.id] = step.status
+                }
+            }
+        }
+        return statuses
+    }
+
+    func insertEvent(_ event: WorkEvent) throws {
+        let sql = """
+            INSERT INTO work_events
+                (level, target_id, from_status, to_status, source, note, at, actor_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            throw WorkEngineStoreError.sqlite("Could not prepare event insert")
+        }
+        bindText(stmt, 1, event.level.rawValue)
+        bindText(stmt, 2, event.targetId)
+        bindText(stmt, 3, event.fromStatus.rawValue)
+        bindText(stmt, 4, event.toStatus.rawValue)
+        bindText(stmt, 5, event.source)
+        bindTextOpt(stmt, 6, event.note)
+        bindDouble(stmt, 7, event.at.timeIntervalSince1970)
+        bindText(stmt, 8, event.actorId)
+        guard sqlite3_step(stmt) == SQLITE_DONE else {
+            throw WorkEngineStoreError.sqlite("Could not append work event")
+        }
+    }
+
+    func updateStatus(level: WorkLevel, id: String, status: WorkStatus, at: Date) throws {
+        let table: String
+        switch level {
+        case .task: table = "work_tasks"
+        case .phase: table = "work_phases"
+        case .step: table = "work_steps"
+        case .project: throw WorkEngineStoreError.targetNotFound(.project, id)
+        }
+        let sql = "UPDATE \(table) SET status = ?, updated_at = ? WHERE id = ?"
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            throw WorkEngineStoreError.sqlite("Could not prepare status update")
+        }
+        bindText(stmt, 1, status.rawValue)
+        bindDouble(stmt, 2, at.timeIntervalSince1970)
+        bindText(stmt, 3, id)
+        guard sqlite3_step(stmt) == SQLITE_DONE else {
+            throw WorkEngineStoreError.sqlite("Could not update status")
+        }
     }
 }
