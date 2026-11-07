@@ -1,0 +1,108 @@
+name: WorkEngine CI
+
+# Stage 1: fast syntax parse of the new WorkEngine files (seconds).
+# Stage 2: build simulator-arch native deps, then run MinisTests on the iOS
+#          Simulator. This is the only way to actually execute unit tests;
+#          the device-only build in job "build" below validates compilation.
+#
+# Native deps support a --simulator flag (verified in deps/build_*.sh).
+# The first run of either job builds deps from source: 30-60 min.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [workengine]
+  pull_request:
+
+jobs:
+  syntax:
+    name: WorkEngine syntax check
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Parse WorkEngine sources
+        run: |
+          set -e
+          xcrun swiftc -parse src/ios/Agent/WorkEngine/*.swift
+          xcrun swiftc -parse src/ios/MinisTests/WorkEngine*.swift
+
+  build:
+    name: Build app (device, unsigned)
+    runs-on: macos-26
+    needs: syntax
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+
+      - name: Install build tools
+        run: |
+          brew update
+          brew install ninja llvm libarchive pkg-config go
+          pip3 install meson
+
+      - name: Metal Toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+
+      - name: Build native deps (device)
+        run: |
+          ./deps/build_lame.sh
+          ./deps/build_ffmpeg.sh
+          ./deps/build_ish.sh
+          ./deps/prepare_alpine_rootfs.sh
+          ./deps/build_rclone_ios.sh
+
+      - name: Build app (device)
+        run: |
+          set -o pipefail
+          xcodebuild -project src/ios/Minis.xcodeproj -scheme Minis \
+            -configuration Debug -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build.log
+
+      - name: Upload build log
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+
+  test:
+    name: Unit tests (simulator)
+    runs-on: macos-26
+    needs: syntax
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+
+      - name: Install build tools
+        run: |
+          brew update
+          brew install ninja llvm libarchive pkg-config go
+          pip3 install meson
+
+      - name: Metal Toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+
+      - name: Build native deps (simulator)
+        run: |
+          ./deps/build_lame.sh --simulator
+          ./deps/build_ffmpeg.sh --simulator
+          ./deps/build_ish.sh --simulator
+          ./deps/prepare_alpine_rootfs.sh
+          ./deps/build_rclone_ios.sh --simulator
+
+      - name: Run unit tests
+        run: |
+          xcodebuild -project src/ios/Minis.xcodeproj -scheme Minis \
+            -configuration Debug -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -only-testing:MinisTests test

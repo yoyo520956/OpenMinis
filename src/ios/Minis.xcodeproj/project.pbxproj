@@ -1463,6 +1463,7 @@
 		E5MDSYNC00000000000000A1 /* Markdown */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Markdown; sourceTree = "<group>"; };
 		E5TH00012 /* MinisTestHost */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = MinisTestHost; sourceTree = "<group>"; };
 		E5V3SYNC00000000000000A1 /* CollectionViewMessageListV3 */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = CollectionViewMessageListV3; sourceTree = "<group>"; };
+		E5WESYNC0000000000000A1 /* WorkEngine */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = WorkEngine; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1820,6 +1821,7 @@
 				BKP000010 /* Backup */,
 				E57000030 /* BrowserUse */,
 				F1A00010 /* Chat */,
+				E5WESYNC0000000000000A1 /* WorkEngine */,
 				E5T000030 /* Intents */,
 				F1A00016 /* ISH */,
 				E5AJR0030 /* Jobs */,
@@ -2777,7 +2779,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				AA0838CB2F3CA8A900049557 /* Terminal */,
-				E5ACVSYNC0000000000000A1 /* AIChatView */,
+				E5WESYNC0000000000000A1 /* WorkEngine */,
 				E5CVSYNC00000000000000A1 /* ContentView */,
 				E5MDSYNC00000000000000A1 /* Markdown */,
 				E5V3SYNC00000000000000A1 /* CollectionViewMessageListV3 */,
