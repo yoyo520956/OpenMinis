@@ -10,9 +10,9 @@ import Foundation
 actor WorkEngineEventBus {
     static let shared = WorkEngineEventBus()
 
-    private var subscribers: [UUID: AsyncStream<WorkEvent>.Continuation] = [:]
+    private var continuations: [UUID: AsyncStream<WorkEvent>.Continuation] = [:]
 
-    func stream() -> AsyncStream<WorkEvent> {
+    func stream(targetId: String? = nil) -> AsyncStream<WorkEvent> {
         let id = UUID()
         return AsyncStream { continuation in
             continuations[id] = continuation
@@ -23,60 +23,70 @@ actor WorkEngineEventBus {
     }
 
     func publish(_ event: WorkEvent) {
-        for continuation in subscribers.values {
+        for continuation in continuations.values {
             continuation.yield(event)
         }
     }
 
     @discardableResult
+    func transition(store: WorkEngineStore,
+                    level: WorkLevel,
+                    targetId: String,
+                    toStatus: WorkStatus,
+                    source: String,
+                    note: String? = nil,
+                    actorId: String) async throws -> WorkEvent {
+        let event = try await store.applyTransition(
+            level: level, targetId: targetId, toStatus: toStatus,
+            source: source, note: note, actorId: actorId
+        )
+        publish(event)
+        return event
+    }
+
     func toolTransition(store: WorkEngineStore, level: WorkLevel, targetId: String,
                         toStatus: WorkStatus, note: String? = nil,
                         actorId: String) async throws -> WorkEvent {
-        try await emit(store: store, level: level, targetId: targetId, toStatus: toStatus,
-                       source: "tool", note: note, actorId: actorId)
+        try await transition(store: store, level: level, targetId: targetId,
+                             toStatus: toStatus, source: "tool", note: note, actorId: actorId)
     }
 
-    @discardableResult
     func fileWatcherTransition(store: WorkEngineStore, level: WorkLevel, targetId: String,
                                toStatus: WorkStatus, note: String? = nil,
                                actorId: String) async throws -> WorkEvent {
-        try await emitTransition(store: store, level: level, targetId: targetId,
-            toStatus: toStatus, source: "fileWatcher", note: note, actorId: actorId)
+        try await transition(store: store, level: level, targetId: targetId, toStatus: toStatus,
+            source: "fileWatcher", note: note, actorId: actorId)
     }
 
-    @discardableResult
     func commandTransition(store: WorkEngineStore, level: WorkLevel, targetId: String,
                            toStatus: WorkStatus, note: String? = nil,
                            actorId: String) async throws -> WorkEvent {
-        try await emit(store: store, level: level, targetId: targetId, toStatus: toStatus,
+        try await transition(store: store, level: level, targetId: targetId, toStatus: toStatus,
                        source: "command", note: note, actorId: actorId)
     }
 
-    @discardableResult
     func testTransition(store: WorkEngineStore, level: WorkLevel, targetId: String,
                         toStatus: WorkStatus, note: String? = nil,
                         actorId: String) async throws -> WorkEvent {
-        try await emit(store: store, level: level, targetId: targetId, toStatus: toStatus,
+        try await transition(store: store, level: level, targetId: targetId, toStatus: toStatus,
                        source: "test", note: note, actorId: actorId)
     }
 
-    @discardableResult
     func plannerTransition(store: WorkEngineStore, level: WorkLevel, targetId: String,
                            toStatus: WorkStatus, note: String? = nil,
                            actorId: String = "planner") async throws -> WorkEvent {
-        try await emit(store: store, level: level, targetId: targetId, toStatus: toStatus,
+        try await transition(store: store, level: level, targetId: targetId, toStatus: toStatus,
                        source: "planner", note: note, actorId: actorId)
     }
 
-    @discardableResult
     func recoveryTransition(store: WorkEngineStore, level: WorkLevel, targetId: String,
                             toStatus: WorkStatus, note: String? = nil,
                             actorId: String = "recovery") async throws -> WorkEvent {
-        try await emit(store: store, level: level, targetId: targetId, toStatus: toStatus,
+        try await transition(store: store, level: level, targetId: targetId, toStatus: toStatus,
                        source: "recovery", note: note, actorId: actorId)
     }
 
     private func removeSubscriber(_ id: UUID) {
-        subscribers.removeValue(forKey: id)
+        continuations.removeValue(forKey: id)
     }
 }
