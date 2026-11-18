@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E5IMP0002 /* ChatArchiveParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5IMP0001 /* ChatArchiveParser.swift */; };
+		E5IMP0004 /* ChatImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5IMP0003 /* ChatImportService.swift */; };
+		E5IMP0006 /* ChatImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5IMP0005 /* ChatImportView.swift */; };
 		21FED4B7BB6F6D9476C9992E /* VoiceProvider+System.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88993FC8E3F0199C6638F664 /* VoiceProvider+System.swift */; };
 		241D530017827D7F0EB604DE /* VoiceProviderFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2941B643B8A2F048A2B154E /* VoiceProviderFactory.swift */; };
 		2A4FD49F872431D703328384 /* VoiceOutputPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 424510790AF3FB2452D3CCE3 /* VoiceOutputPlayer.swift */; };
@@ -722,6 +725,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		E5IMP0001 /* ChatArchiveParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatArchiveParser.swift; sourceTree = "<group>"; };
+		E5IMP0003 /* ChatImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatImportService.swift; sourceTree = "<group>"; };
+		E5IMP0005 /* ChatImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatImportView.swift; sourceTree = "<group>"; };
 		0ED149397BEA7E0408C92688 /* GroupVoiceModelsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupVoiceModelsView.swift; sourceTree = "<group>"; };
 		0F5379380323FA8C6477708C /* GroupSlotPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupSlotPicker.swift; sourceTree = "<group>"; };
 		16FF3462D09402F14B610CD6 /* VoiceWaveformView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VoiceWaveformView.swift; sourceTree = "<group>"; };
@@ -2405,6 +2411,7 @@
 				E5SDS0011 /* SessionDeletionSupport.swift */,
 				BB1000110F700000000000AA /* ContextPolicy.swift */,
 				E5FMI0011 /* FileMentionIndex.swift */,
+				E5IMP0GRP /* ChatImport */,
 			);
 			path = Chat;
 			sourceTree = "<group>";
@@ -2627,6 +2634,7 @@
 				E5TLS0011 /* ToolsSettingsView.swift */,
 				E5LOCK102 /* FaceIDProtectionSettingsView.swift */,
 				E5LOCK103 /* AppLockOverlay.swift */,
+				E5IMP0005 /* ChatImportView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -2706,6 +2714,15 @@
 				F1VMCP04 /* SessionMCPsView.swift */,
 			);
 			path = MCP;
+			sourceTree = "<group>";
+		};
+		E5IMP0GRP /* ChatImport */ = {
+			isa = PBXGroup;
+			children = (
+				E5IMP0001 /* ChatArchiveParser.swift */,
+				E5IMP0003 /* ChatImportService.swift */,
+			);
+			path = ChatImport;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -3293,6 +3310,9 @@
 				E5F100002 /* LLMSessionRegistry.swift in Sources */,
 				E5F100003 /* MinisUserAgent.swift in Sources */,
 				E53000004 /* ChatStore.swift in Sources */,
+				E5IMP0002 /* ChatArchiveParser.swift in Sources */,
+				E5IMP0004 /* ChatImportService.swift in Sources */,
+				E5IMP0006 /* ChatImportView.swift in Sources */,
 				E5CSSPL001B /* ChatStore+Schema.swift in Sources */,
 				E5CSSPL002B /* ChatStore+SessionCRUD.swift in Sources */,
 				E5CSSPL003B /* ChatStore+SessionList.swift in Sources */,
