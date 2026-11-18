@@ -1,0 +1,98 @@
+# OpenMinis fork (chat-import) CI
+# - parser-test: fast gate, verifies the shipped ChatArchiveParser with fixtures
+# - build-ipa:   full iOS build → unsigned ad-hoc IPA artifact (Sideloadly/AltStore)
+
+name: chat-import-ci
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: chat-import-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  parser-test:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run shipped-parser standalone test
+        run: swift src/ios/MinisTests/Standalone/ChatImportParserStandaloneTest.swift
+
+  build-ipa:
+    runs-on: macos-latest
+    timeout-minutes: 180
+    needs: parser-test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Show toolchain
+        run: |
+          sw_vers; xcodebuild -version
+          ls /Applications | grep -i xcode || true
+
+      - name: Use newest Xcode
+        run: |
+          set -e
+          XC=$(ls -1 /Applications | grep -E '^Xcode' | sort -V | tail -1)
+          echo "using $XC"
+          sudo xcode-select -s "/Applications/$XC/Contents/Developer"
+          xcodebuild -version
+
+      - name: Metal toolchain
+        run: xcodebuild -downloadComponent MetalToolchain || true
+
+      - name: Brew deps
+        run: |
+          brew install -q ninja llvm libarchive pkg-config go || true
+          pip3 install -q meson || true
+
+      - name: Build native deps (lame/ffmpeg/ish/rootfs/rclone)
+        run: |
+          ./deps/build_lame.sh
+          ./deps/build_ffmpeg.sh
+          ./deps/build_ish.sh
+          ./deps/prepare_alpine_rootfs.sh
+          ./deps/build_rclone_ios.sh
+        timeout: 120
+
+      - name: xcodebuild (device, Release, unsigned)
+        run: |
+          xcodebuild \
+            -project src/ios/Minis.xcodeproj \
+            -scheme Minis \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+        timeout: 60
+
+      - name: Ad-hoc sign & package IPA
+        run: |
+          set -e
+          PROD="$RUNNER_TEMP/Build/Products/Release-iphoneos"
+          # xcodebuild without derived-data flag writes to a default path:
+          DD=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -name 'Minis-*' -type d | head -1)
+          if [ -n "$DD" ]; then PROD="$DD/Build/Products/Release-iphoneos"; fi
+          echo "product dir: $PROD"
+          test -d "$PROD/Minis.app"
+          APPS=( "$PROD/Minis.app" )
+          for x in "$PROD"/*.appex; do [ -d "$x" ] && APPS+=( "$x" ); done
+          for a in "${APPS[@]}"; do
+            codesign -f -s - --entitlements /dev/null "$a" 2>/dev/null || codesign -f -s - "$a"
+          done
+          rm -rf Payload && mkdir Payload
+          for a in "${APPS[@]}"; do cp -R "$a" Payload/; done
+          zip -qry Minis-chatimport.ipa Payload
+          ls -la Minis-chatimport.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Minis-chatimport-ipa
+          path: Minis-chatimport.ipa
+          if-no-files-found: error
