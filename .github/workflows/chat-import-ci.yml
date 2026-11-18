@@ -59,7 +59,7 @@ jobs:
           ./deps/build_ish.sh
           ./deps/prepare_alpine_rootfs.sh
           ./deps/build_rclone_ios.sh
-        timeout: 120
+        timeout-minutes: 120
 
       - name: xcodebuild (device, Release, unsigned)
         run: |
@@ -70,7 +70,7 @@ jobs:
             -destination 'generic/platform=iOS' \
             CODE_SIGNING_ALLOWED=NO \
             build
-        timeout: 60
+        timeout-minutes: 60
 
       - name: Ad-hoc sign & package IPA
         run: |
